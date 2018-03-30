@@ -1,7 +1,7 @@
 //Functions
 
 function loopFunction(){
-	// Loop For Controlling "Please Alert"
+    // Loop For Controlling "Please Alert"
     var i = 2;
     while (i < 3 ){
 	  alert ("Please enter valid numbers");
@@ -10,9 +10,9 @@ function loopFunction(){
 }
 
  function promptFunction(){
-	 /* Prompt Number, Sum and Check For Numbers
-	 Conditions and Execution For Invalid Numbers*/
-	var a = prompt ("Enter 1st' Number","0");
+    /* Prompt Number, Sum and Check For Numbers 
+    Conditions and Execution For Invalid Numbers*/
+    var a = prompt ("Enter 1st' Number","0");
     var b = prompt ("Enter 2nd' Number","0");
     var c = prompt ("Enter 3rd' Number","0");
 	var num1 = Number (a);
