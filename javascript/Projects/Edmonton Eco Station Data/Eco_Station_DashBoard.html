@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="dc.css">
+    <link rel="stylesheet" href="bootstrap-211.css">
+    <style>
+      html, body{
+        height: 100%;
+        width: 100%;
+      }
+
+      div {
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+      }
+
+      .row {
+          display: block;
+          height: 100%;
+          width: 100%;
+      }
+
+      .column1 {
+        width: 45%;
+        height: 100%;
+        display: block;
+        float: left;
+        border:1px solid black;
+      }
+
+      .column2,
+      .column3 {
+        width: 27.5%;
+        height: 100%;
+        display: block;
+        float: left;
+        border:1px solid black;
+      }
+
+      .column1  div,
+      .column2  div{
+        width: 100%;
+        height: 50%;
+        display: block;
+        border:1px solid black;
+      }
+
+      p#data-count-table {
+        text-align: center;
+        display: block;
+        width: 100%;
+        height: 5%;
+
+      }
+      h1,
+      td.dc-table-column,
+      th.dc-table-head {
+        text-align: center;
+      }
+
+      .column3 thead {
+         background: #5e97f2;
+         color: white;
+      }
+
+    </style>
+    <script type="text/javascript" src="d3_3517.js"></script>
+    <script type="text/javascript" src="crossfilter.js"></script>
+    <script type="text/javascript" src="dc-202.js"></script>
+    <script type="text/javascript" src="jquery-3.2.1.js"></script>
+    <title>Eco Station Dashboard</title>
+  </head>
+  <body>
+    <div class="row">
+      <div class="container column1">
+        <div class="subrow-1" id="bar-chart">
+          <h1>Bar Chart</h1>
+          <span class="reset" style="display: none">Month(s): <span class="filter"></span></span>
+          <a class="reset" style="display:none" href="javascript:barChart.filterAll(); dc.redrawAll();">reset</a>
+        </div>
+        <div class="subrow-2">
+          <h1>Stats</h1>
+        </div>
+      </div>
+      <div class="container column2">
+        <div class="subrow-1">
+          <h1>Stats</h1>
+          <span id="total-display">Total: </span><br/>
+          <span id="year-stats">Year</span><br/>
+          <span class="min-max-year"></span><br/>
+          <span class="min-max-year"></span><br/>
+          <!-- <span id="month-stats">Month</span><br/>
+          <span class="min-max-year">Lowest: </span><br/>
+          <span class="min-max-year">Highest: </span><br/>           -->
+        </div>
+        <div class="subrow-2" id="pie-chart">
+          <h1>Pie Chart</h1>
+          <span class="reset" style="display: none">Year(s): <span class="filter"></span></span>
+          <a class="reset" style="display:none" href="javascript:pieChart.filterAll(); dc.redrawAll();">reset</a>
+        </div>
+      </div>
+      <div class="container column3">
+        <h1>Monthly Users</h1>
+        <p id="data-count-table">
+        </p>
+        <table id="users-table" class="table table-hover"></table>
+      </div>
+    </div>
+    <script type="text/javascript">
+
+    d3.json("Eco_Station_Monthly_Users.json",function(error,entries){
+        if (error) {
+          throw(error);
+        }
+      function print_filter(filter) {
+       var f=eval(filter);
+       if (typeof(f.length) != "undefined") {}else{}
+       if (typeof(f.top) != "undefined") {f=f.top(Infinity);}else{}
+       if (typeof(f.dimension) != "undefined") {f=f.dimension(function(d) { return "";}).top(Infinity);}else{}
+       console.log(filter+"("+f.length+") = "+JSON.stringify(f).replace("[","[\n\t").replace(/}\,/g,"},\n\t").replace("]","\n]"));
+       }
+
+       // filtered out the 2017 entries the months are not complete we are still in the year of 2017
+       // then overwrite entries with the filtered entries
+       entries = [].filter.call(entries, function(d){ return d['year'] != '2017';});
+
+       /*of_users, month, year, and id to number objects
+        datetime to a date object
+        converting strings to objects mentioned above
+       */
+       entries.forEach(function(d){
+
+         d.of_users = +d.of_users;
+         d.id = +d.id;
+         d.datetime = new Date(d.datetime);
+         d.month = d.datetime.getMonth();
+         d.year = d.datetime.getFullYear();
+       })
+
+
+       // all the rows of the entries
+        var facts = crossfilter(entries);
+        var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var all = facts.groupAll();
+        var sumOfAllUsers = facts.groupAll().reduceSum(function(d){return d.of_users;});//this is a group
+        var ofUsersArray = [].map.call(entries,function(d){ return d.of_users;});
+        var sumOfUsersReduced = ofUsersArray.reduce(function(sum,value){ return sum + value},0);// total number the sum of all users
+
+
+       //pie chart,dataTable, and bar Chart
+       var yearDimension = facts.dimension(function(d){return d.year;});
+       var yearGroup = yearDimension.group().reduceSum(function(d){return (d.of_users/sumOfUsersReduced)*100;});
+       pieChart = dc.pieChart("#pie-chart");
+       var dataTable = dc.dataTable("#users-table");
+       var dataCountTable =dc.dataCount('#data-count-table');
+
+
+       //row and Bar chart
+       var monthDimension = facts.dimension(function(d){return monthNames[d.month];});
+       var monthGroup = monthDimension.group().reduceSum(function(d){return d.of_users;});
+       barChart = dc.barChart("#bar-chart");
+
+       //number display
+       var totalDisplay = dc.numberDisplay('#total-display');
+       var minYear = yearGroup.top(yearGroup.size())[yearGroup.size()-1].key;
+       var maxYear = yearGroup.top(yearGroup.size())[0].key;
+
+       //Bar
+       barChart.width(600).height(300).dimension(monthDimension).group(monthGroup)
+               .x(d3.scale.ordinal().domain(monthNames))
+               .xUnits(dc.units.ordinal)
+               .elasticY(true);
+
+      //number
+      totalDisplay.group(sumOfAllUsers).valueAccessor(function(d){ return d;}).formatNumber(d3.format(","));
+
+       //table
+      dataTable.width(200).height(400).dimension(yearDimension)
+                .group(function(d){ return d.year;})
+                .showGroups(false)
+                .columns(['id',
+                          {label:'Month/Year',format: function(d){
+                            return monthNames[d.month] +' '+d.year}},
+                            {label:'Users',format:function(d){
+                              return d.of_users;
+                            }}])
+                .size(12)
+                .sortBy(function(d){return d.id;})
+                .order(d3.ascending);
+      dataCountTable.dimension(facts).group(all)
+                .html({
+                  some: '<strong>%filter-count</strong> months(s) selected out of <strong>%total-count</strong> months. | '+
+                        '<a href= "\javascript:dc.filterAll(); dc.renderAll();\">Reset All</a>',
+                  all: 'All records selected. Please click on the graph to apply filters.'
+                });
+
+      //pie
+      pieChart.dimension(yearDimension).group(yearGroup).width(300).height(300)
+              .label(function(d){return d.key+':'+d.value.toFixed(2) + '%';})
+              .title(function(d){ return 'Users: '+ (Math.round((d.value/100)*sumOfUsersReduced,1)).toLocaleString();});
+
+     function minMaxDisplay(myClass,min,max) {
+       d3.selectAll(myClass)[0]
+         .forEach(function(d,index){
+           d.innerText = (index == 0) ? 'Lowest: ' + min : 'Highest: ' + max; });
+     }
+
+     minMaxDisplay('span.min-max-year',minYear,maxYear);
+    //  minMaxDisplay('month-stats',monthGroup);
+
+
+      //rendering
+      dc.renderAll();
+
+      d3.selectAll('.pie-slice-group .pie-slice')
+        .on('click', function(slice){
+          var slicesSelected = d3.selectAll('.selected')[0].map(function(d){
+                                                                 var item = new Object();
+                                                                 var strYearTotal = d.textContent.substr(7,7);
+                                                                 var numYearTotal = parseInt(strYearTotal.substr(0,3) + strYearTotal.substr(4,3));
+                                                                 var yearPercent = (numYearTotal/sumOfUsersReduced)*100;
+                                                                 var foundObject = yearGroup.all().find(function(d){ return d.value.toFixed(3) == yearPercent.toFixed(3);});
+                                                                 item.year = foundObject.key;
+                                                                 item.users = numYearTotal;
+                                                                 return item;});
+
+          slicesSelected.sort(function(a,b){ return a.users - b.users;});
+
+          var minObject = slicesSelected[0];
+          var maxObject = slicesSelected[slicesSelected.length - 1];
+
+          if (slicesSelected.length == 0){
+            minMaxDisplay('span.min-max-year',minYear,maxYear);
+          }else if(slicesSelected.length == 1) {
+            d3.selectAll('.min-max-year')[0][0].innerText = minObject.year;
+            d3.selectAll('.min-max-year')[0][1].innerText = '';
+          }else if (slicesSelected.length > 1){
+            minMaxDisplay('span.min-max-year',minObject.year,maxObject.year);
+          }
+
+        })
+
+      d3.select('div#pie-chart a.reset')
+        .on('click',function(){
+          minMaxDisplay('span.min-max-year',minYear,maxYear);
+        });
+    })
+
+    </script>
+  </body>
+</html>

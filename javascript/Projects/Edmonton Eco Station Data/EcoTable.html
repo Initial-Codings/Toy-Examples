@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Eco Table</title>
+    <link rel="stylesheet" href="dc.css">
+    <!-- <link rel="stylesheet" href="bootstrap-211.css"> -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <style>
+
+    html,body {
+      height:100%;
+      margin:0;
+      padding:0;
+    }
+
+    div {
+      -webkit-box-sizing: border-box;
+      -moz-box-sizing: border-box;
+      box-sizing: border-box;
+    }
+
+    td.dc-table-column {
+      text-align: center;
+    }
+
+    th.dc-table-head {
+      text-align: center;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    thead {
+      background: #5e97f2;
+      color: white;
+    }
+
+    </style>
+    <script type="text/javascript" src="crossfilter.js"></script>
+    <script type="text/javascript" src="d3_3517.js"></script>
+    <script type="text/javascript" src="dc-202.js"></script>
+    <script type="text/javascript" src="jquery-3.2.1.js"></script>
+  </head>
+  <body>
+    <div class="container table-responsive">
+      <h1>Monthly Users</h1>
+      <table id="users-table" class="table"></table>
+    </div>
+    <script type="text/javascript">
+
+    d3.json("Eco_Station_Monthly_Users.json",function(error,data){
+        if (error) {
+          throw(error);
+        }
+      function print_filter(filter) {
+       var f=eval(filter);
+       if (typeof(f.length) != "undefined") {}else{}
+       if (typeof(f.top) != "undefined") {f=f.top(Infinity);}else{}
+       if (typeof(f.dimension) != "undefined") {f=f.dimension(function(d) { return "";}).top(Infinity);}else{}
+       console.log(filter+"("+f.length+") = "+JSON.stringify(f).replace("[","[\n\t").replace(/}\,/g,"},\n\t").replace("]","\n]"));
+       }
+
+       // filtered out the 2017 data the months are not complete we are still in the year of 2017
+       // then overwrite data with the filtered data
+       data = [].filter.call(data, function(d){ return d['year'] != '2017'});
+
+       /*of_users, month, year, and id to number objects
+        datetime to a date object
+        converting strings to objects mentioned above
+       */
+       data.forEach(function(d){
+
+         d.of_users = +d.of_users;
+         d.id = +d.id;
+         d.datetime = new Date(d.datetime);
+         d.month = d.datetime.getMonth();
+         d.year = d.datetime.getFullYear();
+       })
+
+
+       // all the rows of the data
+        var facts = crossfilter(data);
+
+       //table
+       var idDimension = facts.dimension(function(d){return d.id;});
+       var dataTable = dc.dataTable("#users-table");
+       var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+       dataTable.width(600).height(550).dimension(idDimension)
+                .group(function(d){ return d.year;})
+                .showGroups(false)
+                .columns(['id',
+                          {label:'Month',format: function(d){
+                            return monthNames[d.month] +' '+d.year}},
+                          'of_users'])
+                .size(12)
+                .sortBy(function(d){return d.id;})
+                .order(d3.ascending);
+
+      dc.renderAll();
+        // console.dir(data);
+        // print_filter('idDimension');
+
+    })
+
+    </script>
+  </body>
+</html>
